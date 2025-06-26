@@ -49,6 +49,14 @@ export default defineContentScript({
     const textReplacer = new TextReplacer(createReplacementConfig(settings));
     const floatingBallManager = new FloatingBallManager(settings.floatingBall);
 
+    // Gán lên window để các nơi khác (scroll) có thể gọi lại
+    const w: any = window;
+    w.textProcessor = textProcessor;
+    w.textReplacer = textReplacer;
+    w.originalWordDisplayMode = settings.originalWordDisplayMode;
+    w.translationPosition = settings.translationPosition;
+    w.showParentheses = settings.showParentheses;
+
     // --- Áp dụng cấu hình ban đầu ---
     updateConfiguration(settings, styleManager, textReplacer);
 
@@ -145,6 +153,25 @@ export default defineContentScript({
         selection.removeAllRanges();
       }
     });
+
+    let scrollTimeout: any = null;
+    function onScrollDebounced() {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const w: any = window;
+        if (w.textProcessor && w.textProcessor.processRoot) {
+          w.textProcessor.processRoot(
+            document.body,
+            w.textReplacer,
+            w.originalWordDisplayMode || 'default',
+            400,
+            w.translationPosition || 'below',
+            w.showParentheses || false,
+          );
+        }
+      }, 400);
+    }
+    window.addEventListener('scroll', onScrollDebounced);
   },
 });
 

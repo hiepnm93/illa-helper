@@ -143,29 +143,39 @@ export class TextProcessor {
     showParentheses: boolean,
   ): Promise<void> {
     try {
-      // 第一步：更新内容分段器配置
       this.contentSegmenter.updateConfig({
         maxSegmentLength: maxLength,
         minSegmentLength: 20,
         enableSmartBoundary: true,
         mergeSmallSegments: true,
       });
-
-      // 第二步：使用智能分段器将根节点分割为内容段落
       const segments = this.contentSegmenter.segmentContent(root);
       if (segments.length === 0) {
         return;
       }
-
-      // 第三步：使用处理协调器进行统一处理
-      // 发音功能现在会在每个段落处理完成后立即添加
-      await this.processingCoordinator.processSegments(
-        segments,
-        textReplacer,
-        originalWordDisplayMode,
-        translationPosition,
-        showParentheses,
-      );
+      // Lọc các segment nằm trong vùng ±1 màn hình quanh vị trí cuộn
+      const scrollY = window.scrollY;
+      const viewportHeight = window.innerHeight;
+      const minY = scrollY - viewportHeight;
+      const maxY = scrollY + 2 * viewportHeight;
+      const visibleSegments = segments.filter((seg) => {
+        const rect = seg.element.getBoundingClientRect();
+        const absTop = rect.top + window.scrollY;
+        const absBottom = rect.bottom + window.scrollY;
+        return absBottom >= minY && absTop <= maxY;
+      });
+      // Dịch từng đoạn/batch nhỏ, hiển thị dần
+      const batchSize = 3;
+      for (let i = 0; i < visibleSegments.length; i += batchSize) {
+        const batch = visibleSegments.slice(i, i + batchSize);
+        await this.processingCoordinator.processSegments(
+          batch,
+          textReplacer,
+          originalWordDisplayMode,
+          translationPosition,
+          showParentheses,
+        );
+      }
     } catch (_) {
       // 静默处理错误
     }
