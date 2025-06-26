@@ -27,6 +27,7 @@ import {
 import { ApiConfig } from '../../types';
 import { API_CONSTANTS } from '../config';
 import { cleanMarkdownFromResponse } from '@/src/utils';
+import { browser } from 'wxt/browser';
 
 export class AITranslationProvider implements IPhoneticProvider {
   /** 提供者名称标识 */
@@ -125,27 +126,24 @@ export class AITranslationProvider implements IPhoneticProvider {
         ],
         temperature: this.apiConfig.temperature || 0.3, // 降低温度以获得更稳定的翻译结果
         max_tokens: 100, // 限制回复长度，避免过长的响应
-        enable_thinking: this.apiConfig.enable_thinking,
+        // enable_thinking: this.apiConfig.enable_thinking,
       };
 
-      // 调用AI API
-      const response = await fetch(this.apiConfig.apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiConfig.apiKey}`,
+      // Thay fetch trực tiếp bằng gửi message tới background
+      const response = await browser.runtime.sendMessage({
+        type: 'proxy-api-request',
+        payload: {
+          url: this.apiConfig.apiEndpoint,
+          apiKey: this.apiConfig.apiKey,
+          body: requestBody,
         },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(10000), // 10秒超时
       });
 
-      if (!response.ok) {
-        throw new Error(
-          `AI API请求失败: ${response.status} ${response.statusText}`,
-        );
+      if (!response.success) {
+        throw new Error(`AI API request failed: ${response.error}`);
       }
 
-      const data = await response.json();
+      const data = response.data;
       const meaningInfo = this.parseApiResponse(data, cleanWord);
 
       // 存入缓存
@@ -224,20 +222,19 @@ export class AITranslationProvider implements IPhoneticProvider {
         model: this.apiConfig.model,
         messages: [{ role: 'user', content: 'test' }],
         max_tokens: 1,
-        enable_thinking: this.apiConfig.enable_thinking,
+        // enable_thinking: this.apiConfig.enable_thinking,
       };
 
-      const testResponse = await fetch(this.apiConfig.apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiConfig.apiKey}`,
+      // Thay fetch trực tiếp bằng gửi message tới background
+      const testResponse = await browser.runtime.sendMessage({
+        type: 'proxy-api-request',
+        payload: {
+          url: this.apiConfig.apiEndpoint,
+          apiKey: this.apiConfig.apiKey,
+          body: testRequestBody,
         },
-        body: JSON.stringify(testRequestBody),
-        signal: AbortSignal.timeout(5000), // 5秒超时
       });
-
-      return testResponse.ok;
+      return testResponse.success;
     } catch {
       return false;
     }

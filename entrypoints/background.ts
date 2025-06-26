@@ -70,5 +70,26 @@ export default defineBackground(() => {
       browser.tabs.create({ url: optionsUrl });
       return;
     }
+
+    // Handler proxy API request từ content script để bypass CORS
+    if (message.type === 'proxy-api-request') {
+      (async () => {
+        try {
+          const response = await fetch(message.payload.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${message.payload.apiKey}`,
+            },
+            body: JSON.stringify(message.payload.body),
+          });
+          const data = await response.json();
+          sendResponse({ success: true, data });
+        } catch (error) {
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true; // Cho phép sendResponse bất đồng bộ
+    }
   });
 });

@@ -96,14 +96,14 @@ export function getIntelligentSystemPrompt(
                             CRITICAL RULES:
                             - ALL translations must be in ${targetLanguageName}. Do not translate to any other language.
                             - ABSOLUTELY CRITICAL: If a word or phrase in the source text is already written in ${targetLanguageName}, you MUST completely skip it. Do NOT include it in your response at all. Only translate words that are clearly in a different language than ${targetLanguageName}.
-                            - For example, if translating to English and you see "Hello" in the source text, skip it entirely. If translating to Chinese and you see "你好" in the source text, skip it entirely.
+                            - For example, if translating to English and you see "Hello" in the source text, skip it entirely. If translating to Vietnamese and you see "你好" in the source text, skip it entirely.
                             - The "translation" field must contain ONLY the direct translation of the word/phrase. Do NOT include explanations, pronunciation guides, or additional context.
                             - If you don't follow the rules, my program will crash, so please follow the rules strictly.
                             In the JSON response, the "original" key must contain the source word/phrase, and the "translation" key must contain its ${targetLanguageName} translation.
 
                             WRONG EXAMPLES (DO NOT DO THIS):
                             - If target is English, DO NOT output: {"original": "Hello", "translation": "Hello"}
-                            - If target is Chinese, DO NOT output: {"original": "你好", "translation": "你好"}
+                            - If target is Vietnamese, DO NOT output: {"original": "你好", "translation": "你好"}
                             - DO NOT output: {"original": "word", "translation": "word translation with explanation"}
 `;
 
@@ -176,14 +176,14 @@ function generateTraditionalTaskInstruction(direction: string): string {
 
   if (langNames) {
     const userDescription =
-      langNames.source === 'Chinese'
-        ? 'The user is a native Chinese speaker.'
-        : `The user is a native Chinese speaker learning ${langNames.source}.`;
+      langNames.source === 'Vietnamese'
+        ? 'The user is a native Vietnamese speaker.'
+        : `The user is a native Vietnamese speaker learning ${langNames.source}.`;
 
     return `${userDescription} The provided text is in ${langNames.source}. Your goal is to select key words or phrases and provide their ${langNames.target} translations. In the JSON response, the "original" key must contain the ${langNames.source} word/phrase, and the "translation" key must contain its ${langNames.target} translation.`;
   } else {
     // 默认情况（向后兼容）
-    return 'The user is a native Chinese speaker. The provided text is in Chinese. Your goal is to select Chinese words or phrases and provide their ENGLISH translations to create a mixed-language learning environment. In the JSON response, the "original" key must contain the Chinese word/phrase, and the "translation" key must contain its English translation.';
+    return 'The user is a native Vietnamese speaker. The provided text is in Vietnamese. Your goal is to select Vietnamese words or phrases and provide their ENGLISH translations to create a mixed-language learning environment. In the JSON response, the "original" key must contain the Vietnamese word/phrase, and the "translation" key must contain its English translation.';
   }
 }
 

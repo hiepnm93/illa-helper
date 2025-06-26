@@ -12,6 +12,7 @@ import {
   DEFAULT_API_CONFIG,
 } from './types';
 import { cleanMarkdownFromResponse } from '@/src/utils';
+import { browser } from 'wxt/browser';
 
 // API 服务类
 export class ApiService {
@@ -68,7 +69,7 @@ export class ApiService {
     }
 
     if (!settings.apiConfig.apiKey) {
-      console.error('API 密钥未设置');
+      console.error('API key not set');
     }
     try {
       // 判断是否使用智能模式
@@ -83,7 +84,7 @@ export class ApiService {
         const targetLanguage = settings.multilingualConfig?.targetLanguage;
 
         if (!targetLanguage) {
-          console.error('智能模式下未找到目标语言配置');
+          console.error('The target language configuration was not found in smart mode');
           return {
             original: originalText,
             processed: originalText,
@@ -118,20 +119,21 @@ export class ApiService {
         ],
         temperature: settings.apiConfig.temperature,
         response_format: { type: 'json_object' },
-        enable_thinking: settings.apiConfig.enable_thinking,
+        // enable_thinking: settings.apiConfig.enable_thinking,
       };
 
-      const response = await fetch(settings.apiConfig.apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.apiConfig.apiKey}`,
+      // Thay fetch trực tiếp bằng gửi message tới background
+      const response = await browser.runtime.sendMessage({
+        type: 'proxy-api-request',
+        payload: {
+          url: settings.apiConfig.apiEndpoint,
+          apiKey: settings.apiConfig.apiKey,
+          body: requestBody,
         },
-        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
-        console.error(`API 请求失败: ${response.status}`);
+      if (!response.success) {
+        console.error(`API request failed: ${response.error}`);
         return {
           original: originalText,
           processed: originalText,
@@ -139,7 +141,7 @@ export class ApiService {
         };
       }
 
-      const data = await response.json();
+      const data = response.data;
 
       if (useIntelligentMode) {
         return this.extractIntelligentReplacements(
@@ -151,7 +153,7 @@ export class ApiService {
         return this.extractReplacements(data, originalText);
       }
     } catch (error) {
-      console.error('API 请求或解析失败:', error);
+      console.error('API request or parsing failed:', error);
       return {
         original: originalText,
         processed: originalText,
