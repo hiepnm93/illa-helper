@@ -63,20 +63,20 @@ export const MENU_ACTIONS = [
   {
     id: 'settings',
     icon: '📌',
-    label: '设置',
+    label: 'set up',
     color: '#6A88E0',
   },
   // option设置页面
   {
     id: 'options',
     icon: '⚙️',
-    label: '选项',
+    label: 'Options',
     color: '#6A88E0',
   },
   {
     id: 'close',
     icon: '✕',
-    label: '关闭',
+    label: 'closure',
     color: '#EF4444',
   },
 ] as const;

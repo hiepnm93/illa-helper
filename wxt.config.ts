@@ -12,7 +12,7 @@ export default defineConfig({
     description:
       'Công cụ học tiếng Anh dựa trên lý thuyết "đầu vào dễ hiểu", giúp bạn học tiếng Anh một cách tự nhiên khi lướt web hàng ngày.',
     version: '1.6.5',
-    permissions: ['storage', 'tabs', 'notifications'],
+    permissions: ['storage', 'tabs', 'notifications', 'contextMenus'],
     host_permissions: ['<all_urls>'],
     browser_specific_settings: {
       gecko: {

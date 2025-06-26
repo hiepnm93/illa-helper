@@ -6,6 +6,12 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
       browser.storage.sync.set(DEFAULT_SETTINGS);
+      // Thêm context menu dịch
+      browser.contextMenus.create({
+        id: 'illa-helper-translate-selection',
+        title: 'Dịch đoạn văn bản đã chọn (ILLA Helper)',
+        contexts: ['selection'],
+      });
     }
   });
 
@@ -91,5 +97,21 @@ export default defineBackground(() => {
       })();
       return true; // Cho phép sendResponse bất đồng bộ
     }
+  });
+
+  // Lắng nghe sự kiện click vào context menu (chỉ khi API khả dụng)
+  if (browser.contextMenus && browser.contextMenus.onClicked) {
+    browser.contextMenus.onClicked.addListener((info, tab) => {
+      if (info.menuItemId === 'illa-helper-translate-selection' && tab?.id) {
+        browser.tabs.sendMessage(tab.id, { type: 'CONTEXT_MENU_TRANSLATE' });
+      }
+    });
+  }
+
+  // Đăng ký context menu mỗi lần background khởi động
+  browser.contextMenus.create({
+    id: 'illa-helper-translate-selection',
+    title: 'Dịch đoạn văn bản đã chọn (ILLA Helper)',
+    contexts: ['selection'],
   });
 });

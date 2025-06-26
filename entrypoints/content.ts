@@ -93,6 +93,58 @@ export default defineContentScript({
       textReplacer,
       floatingBallManager,
     );
+
+    // Lắng nghe message từ background khi click context menu
+    browser.runtime.onMessage.addListener(async (message) => {
+      if (message.type === 'CONTEXT_MENU_TRANSLATE') {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString() || '';
+        if (!selectedText.trim() || !selection?.rangeCount) {
+          return;
+        }
+        // Lấy range và text nodes liên quan
+        const range = selection.getRangeAt(0);
+        const textNodes = [];
+        const walker = document.createTreeWalker(
+          range.commonAncestorContainer,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: (node) => {
+              // Chỉ lấy node nằm trong vùng chọn
+              if (range.intersectsNode(node)) return NodeFilter.FILTER_ACCEPT;
+              return NodeFilter.FILTER_REJECT;
+            },
+          }
+        );
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node.nodeType === Node.TEXT_NODE) {
+            textNodes.push(node as Text);
+          }
+        }
+        if (textNodes.length === 0) return;
+        // Tạo segment cho vùng chọn
+        const segment = {
+          id: 'selection',
+          textContent: selectedText,
+          element: textNodes[0].parentElement || document.body,
+          elements: [textNodes[0].parentElement || document.body],
+          textNodes: textNodes,
+          fingerprint: 'selection',
+          domPath: '',
+        };
+        // Xử lý dịch và thay thế vào DOM
+        await textProcessor['processingCoordinator'].processSelectionSegment(
+          segment,
+          textReplacer,
+          settings.originalWordDisplayMode,
+          settings.translationPosition,
+          settings.showParentheses,
+        );
+        // Bỏ chọn sau khi thay thế
+        selection.removeAllRanges();
+      }
+    });
   },
 });
 

@@ -610,4 +610,26 @@ export class ProcessingCoordinator {
       // 静默处理错误
     }
   }
+
+  /**
+   * Xử lý một đoạn văn bản được chọn (public)
+   */
+  public async processSelectionSegment(
+    segment: ContentSegment,
+    textReplacer: any,
+    originalWordDisplayMode: OriginalWordDisplayMode,
+    translationPosition: TranslationPosition,
+    showParentheses: boolean,
+  ) {
+    // Ép kiểu textNodes về Text[]
+    const textNodes = (segment.textNodes || []).filter((n): n is Text => n.nodeType === Node.TEXT_NODE);
+    const fixedSegment = { ...segment, textNodes };
+    return await this.processSingleSegment(
+      fixedSegment,
+      textReplacer,
+      originalWordDisplayMode,
+      translationPosition,
+      showParentheses,
+    );
+  }
 }
