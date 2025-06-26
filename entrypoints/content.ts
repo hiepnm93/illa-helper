@@ -11,12 +11,23 @@ import { StorageManager } from '@/src/modules/storageManager';
 import { TextReplacer } from '@/src/modules/textReplacer';
 import { FloatingBallManager } from '@/src/modules/floatingBall';
 import { BlacklistManager } from '@/src/modules/options/blacklist/manager';
+
+// Khai báo mở rộng Window để tránh lỗi linter
+declare global {
+  interface Window {
+    illaHelperActivated: boolean;
+  }
+}
+
+console.warn('[ILLA Helper] Content script đã inject vào trang này!');
+
 export default defineContentScript({
   // Áp dụng cho tất cả website
   matches: ['<all_urls>'],
 
   // Hàm chính
   async main() {
+    console.warn('[ILLA Helper] Content script đã inject vào trang này!');
     const storageManager = new StorageManager();
     const settings = await storageManager.getUserSettings();
 
@@ -56,6 +67,8 @@ export default defineContentScript({
     w.originalWordDisplayMode = settings.originalWordDisplayMode;
     w.translationPosition = settings.translationPosition;
     w.showParentheses = settings.showParentheses;
+    w.illaHelperActivated = false; // Biến kiểm soát dịch khi scroll
+    w.maxLength = settings.maxLength; // Đảm bảo maxLength luôn đồng bộ
 
     // --- Áp dụng cấu hình ban đầu ---
     updateConfiguration(settings, styleManager, textReplacer);
@@ -102,9 +115,40 @@ export default defineContentScript({
       floatingBallManager,
     );
 
-    // Lắng nghe message từ background khi click context menu
+    let illaHelperActivatedFlag = false;
+    let scrollTimeout: any = null;
+
+    function onScrollDebounced() {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        if (!illaHelperActivatedFlag) return;
+        console.log('[ILLA Helper] Scroll dừng, bắt đầu dịch vùng hiển thị');
+        const w: any = window;
+        if (w.textProcessor && w.textProcessor.processRoot) {
+          w.textProcessor.processRoot(
+            document.body,
+            w.textReplacer,
+            w.originalWordDisplayMode,
+            w.maxLength,
+            w.translationPosition,
+            w.showParentheses,
+          );
+        }
+      }, 700);
+    }
+
+    window.addEventListener('scroll', onScrollDebounced);
+    console.log('[ILLA Helper] Đã đăng ký sự kiện scroll');
+
     browser.runtime.onMessage.addListener(async (message) => {
+      console.log('[ILLA Helper] Nhận message:', message);
       if (message.type === 'CONTEXT_MENU_TRANSLATE') {
+        // Kiểm tra trạng thái bật/tắt extension
+        const storageManager = new StorageManager();
+        const settings = await storageManager.getUserSettings();
+        if (!settings.isEnabled) return;
+        // Khi dịch thủ công, đánh dấu đã kích hoạt
+        window.illaHelperActivated = true;
         const selection = window.getSelection();
         const selectedText = selection?.toString() || '';
         if (!selectedText.trim() || !selection?.rangeCount) {
@@ -152,26 +196,25 @@ export default defineContentScript({
         // Bỏ chọn sau khi thay thế
         selection.removeAllRanges();
       }
-    });
-
-    let scrollTimeout: any = null;
-    function onScrollDebounced() {
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        const w: any = window;
-        if (w.textProcessor && w.textProcessor.processRoot) {
-          w.textProcessor.processRoot(
-            document.body,
-            w.textReplacer,
-            w.originalWordDisplayMode || 'default',
-            400,
-            w.translationPosition || 'below',
-            w.showParentheses || false,
-          );
+      if (message.type === 'MANUAL_TRANSLATE') {
+        illaHelperActivatedFlag = !illaHelperActivatedFlag;
+        console.log('[ILLA Helper] Đổi trạng thái tự động dịch:', illaHelperActivatedFlag);
+        if (illaHelperActivatedFlag) {
+          // Dịch ngay vùng hiển thị khi vừa kích hoạt
+          const w: any = window;
+          if (w.textProcessor && w.textProcessor.processRoot) {
+            w.textProcessor.processRoot(
+              document.body,
+              w.textReplacer,
+              w.originalWordDisplayMode,
+              w.maxLength,
+              w.translationPosition,
+              w.showParentheses,
+            );
+          }
         }
-      }, 400);
-    }
-    window.addEventListener('scroll', onScrollDebounced);
+      }
+    });
   },
 });
 
@@ -449,15 +492,15 @@ function isDescendant(node: Node, nodeSet: Set<Node>): boolean {
 async function detectPageLanguage(): Promise<string> {
   try {
     const textSample = document.body.innerText.substring(0, 1000);
-    if (!textSample.trim()) return 'zh-to-en';
+    if (!textSample.trim()) return 'vi-to-en';
 
     const result = await browser.i18n.detectLanguage(textSample);
 
     if (result?.languages?.[0]?.language === 'en') {
-      return 'en-to-zh';
+      return 'en-to-vi';
     }
-    return 'zh-to-en';
+    return 'vi-to-en';
   } catch (_) {
-    return 'zh-to-en'; // Nếu lỗi thì mặc định
+    return 'vi-to-en'; // Nếu lỗi thì mặc định
   }
 }

@@ -6,12 +6,7 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
       browser.storage.sync.set(DEFAULT_SETTINGS);
-      // Thêm context menu dịch
-      browser.contextMenus.create({
-        id: 'illa-helper-translate-selection',
-        title: 'Dịch đoạn văn bản đã chọn (ILLA Helper)',
-        contexts: ['selection'],
-      });
+      // Không cần tạo context menu ở đây nữa
     }
   });
 
@@ -26,7 +21,9 @@ export default defineBackground(() => {
       try {
         browser.action.openPopup();
       } catch (error) {
-        console.error('Không thể mở popup:', error);
+        const err = error as unknown;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('Không thể mở popup:', errMsg);
         const optionsUrl = browser.runtime.getURL('/options.html');
         browser.tabs.create({ url: optionsUrl });
       }
@@ -85,7 +82,7 @@ export default defineBackground(() => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${message.payload.apiKey}`,
+              Authorization: `Bearer ${message.payload.apiKey}`,
             },
             body: JSON.stringify(message.payload.body),
           });
